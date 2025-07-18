@@ -3,6 +3,7 @@
 %DEFINE READ_SYSCALL 0
 %DEFINE WRITE_SYSCALL 1
 %DEFINE OPEN_SYSCALL 2
+%DEFINE CLOSE_SYSCALL 3
 %DEFINE EXIT_SYSCALL 60
 
 section .bss
@@ -41,13 +42,21 @@ section .text
     syscall
 %endmacro
 
+%macro CLOSE 1
+    mov rax, CLOSE_SYSCALL
+    mov rdi, %1
+    mov rsi, 0
+    mov rdx, 0
+    syscall
+%endmacro
+
 _start:
     mov qword [rsp - 8], 0
     all_files:
         inc qword [rsp - 8]
         mov r10, qword [rsp - 8]
         cmp r10, qword [rsp]
-        jge done
+        jge .done
 
         OPEN [rsp + 8 + r10 * 8]
 
@@ -55,29 +64,33 @@ _start:
         mov rsi, r12
         cmp r12, 0
 
-        jl cant_open
+        jl .cant_open
 
-        read_chunk:
+        .read_chunk:
             READ r12, buffer, BUFFER_SIZE
             mov r11, rax
             cmp r11, 0
-            je all_files
+            je .complete_file
             WRITE 1, buffer, r11
-            jmp read_chunk
+            jmp .read_chunk
+        
+        .complete_file:
+            CLOSE r12
+            jmp all_files
 
-        done:
+        .done:
             EXIT 0
 
-        cant_open:
+        .cant_open:
             mov rax, [rsp + 8 + r10 * 8]
-            call compute_string_len
+            call .compute_string_len
             mov r9, rax
             WRITE 2, error_message, error_message_len
             WRITE 2, [rsp + 8 + r10 * 8], r9
             WRITE 2, newline, 1
             EXIT r12
 
-        compute_string_len:
+        .compute_string_len:
             enter 8, 0
             mov qword [rbp - 8], 0
             .inner:
