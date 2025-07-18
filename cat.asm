@@ -1,10 +1,10 @@
 %DEFINE BUFFER_SIZE 4096000
 
-%DEFINE READ_SYSCALL 0
+%DEFINE READ_SYSCALL  0
 %DEFINE WRITE_SYSCALL 1
-%DEFINE OPEN_SYSCALL 2
+%DEFINE OPEN_SYSCALL  2
 %DEFINE CLOSE_SYSCALL 3
-%DEFINE EXIT_SYSCALL 60
+%DEFINE EXIT_SYSCALL  60
 
 section .bss
     buffer: resb BUFFER_SIZE
@@ -91,7 +91,9 @@ _start:
             EXIT r12
 
         .compute_string_len:
-            enter 8, 0
+            push rbp
+            mov rbp, rsp
+            sub rsp, 8
             mov qword [rbp - 8], 0
             .inner:
                 cmp byte [rax], 0
@@ -101,7 +103,8 @@ _start:
                 jmp .inner
             .return:
                 mov rax, qword [rbp -8]
-                leave
+                mov rsp, rbp
+                pop rbp
                 ret
 
     ; inline strings to keep the bin size small
